@@ -1,11 +1,10 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.preprocessing import StandardScaler
 import statsmodels.api as sm
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import ndcg_score
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import ndcg_score, roc_auc_score
+from sklearn.model_selection import train_test_split
 
 train = pd.read_csv("./data/train_df.csv")
 test = pd.read_csv("./data/test_df.csv")
@@ -106,12 +105,17 @@ def calculate_ndcg(y_true, y_score):
     return ndcg
 
 
-clf = LogisticRegression()
-clf.fit(X_train_reduced[:-500], y_train[:-500])
-predictions_val = clf.predict_proba(X_train_reduced[-500:])[:, 1]
+X_train, X_val, y_train, y_val = train_test_split(
+    X_train_reduced, y_train, test_size=0.2
+)
 
-ndcg_val = calculate_ndcg(y_train[-500:], predictions_val)
-ROC_val = roc_auc_score(y_train[-500:], predictions_val)
+
+clf = LogisticRegression()
+clf.fit(X_train, y_train)
+predictions_val = clf.predict_proba(X_val)[:, 1]
+
+ndcg_val = calculate_ndcg(y_val, predictions_val)
+ROC_val = roc_auc_score(y_val, predictions_val)
 print(f"val NDCG: {ndcg_val:.4}; val ROC-AUC: {ROC_val:.4}")
 
 
