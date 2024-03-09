@@ -1,37 +1,36 @@
-# FROM python:3.8.6-buster
+# Используем официальный базовый образ Python
+FROM python:3.10-slim
 
-# FROM nvidia/cuda:10.2-devel-ubuntu18.04
-
-FROM nvidia/cuda:11.0.3-base-ubuntu18.04
-
-RUN apt-get update && \
-	apt-get install -y curl python3.8 python3.8-distutils wget && \
-	ln -s /usr/bin/python3.8 /usr/bin/python && \
-	rm -rf /var/lib/apt/lists/*
-
-RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-    python get-pip.py && \
-    python -m pip install -U pip==20.3.3
-
-ENV PROJECT_ROOT /app
+# Устанавливаем переменные окружения
 ENV DATA_ROOT /data
-ENV TEST_DATA_ROOT /test_data
+ENV PROJECT_ROOT /app
 
-RUN mkdir $PROJECT_ROOT $DATA_ROOT
+# Создаем директории
+RUN mkdir -p $DATA_ROOT
+RUN mkdir -p $PROJECT_ROOT
 
-COPY . $PROJECT_ROOT
+# Устанавливаем зависимости
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
+# Копируем только файлы, необходимые для установки зависимостей, чтобы избежать ненужных сборок
+COPY requirements.txt $PROJECT_ROOT/
+
+# Переходим в рабочую директорию
 WORKDIR $PROJECT_ROOT
 
-#RUN chmod +x $PROJECT_ROOT/lib/load_fine_tuned.sh && \
-#    $PROJECT_ROOT/lib/load_fine_tuned.sh
+# Устанавливаем зависимости Python
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install -r requirements.txt
+# Копируем остальные файлы проекта
+COPY . .
 
-RUN cd $PROJECT_ROOT/lib/
+# Даем права на выполнение скриптов
+RUN chmod +x data/get_data.sh
 
-RUN wget "https://getfile.dokpub.com/yandex/get/https://disk.yandex.com/d/UHwmj9UQyDcC6g" -O tuned_model_weights
+# Запускаем скрипт для получения данных
+RUN ./data/get_data.sh
 
-RUN python load_model_weights.py
-
+# Задаем команду по умолчанию
 CMD ["python", "lib/run.py"]
